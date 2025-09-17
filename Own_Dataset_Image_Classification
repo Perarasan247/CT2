@@ -1,0 +1,120 @@
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.layers import Dense, Softmax
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
+import matplotlib.pyplot as plt
+import numpy as np
+
+# !pip install kagglehub
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("samuelcortinhas/cats-and-dogs-image-classification")
+print("Path to dataset files:", path)
+
+# Keep consistent image size
+img_height, img_width = 32, 32  # Using 32x32 to match your flattening
+batch_size = 64
+
+train_dataset = image_dataset_from_directory(
+    f'{path}/train',
+    image_size=(img_height, img_width),
+    batch_size=batch_size,
+    label_mode='int'
+)
+
+test_dataset = image_dataset_from_directory(
+    f'{path}/test',
+    image_size=(img_height, img_width),
+    batch_size=batch_size,
+    label_mode='int'
+)
+
+# Store original images before flattening for visualization
+def store_original_and_flatten(images, labels):
+    # Store original images in a separate dataset for visualization
+    original_images = images
+    # Flatten and normalize for the dense model
+    flattened_images = tf.reshape(images, (tf.shape(images)[0], -1)) / 255.0
+    return flattened_images, labels, original_images
+
+# Create separate datasets for training and visualization
+train_flattened = train_dataset.map(lambda x, y: (tf.reshape(x, (tf.shape(x)[0], -1)) / 255.0, y))
+test_flattened = test_dataset.map(lambda x, y: (tf.reshape(x, (tf.shape(x)[0], -1)) / 255.0, y))
+
+# Keep original images for visualization
+test_original = test_dataset.map(lambda x, y: (x / 255.0, y))
+
+class_names = ["cat", "dog"]
+num_classes = len(class_names)
+
+input_shape = img_height * img_width * 3  # 3 channels for RGB
+print(f"Input shape: {input_shape} (should be 3072 for 32x32x3)")
+
+# Build the model
+model = Sequential([
+    Dense(512, activation='relu', input_shape=(input_shape,)),
+    Dense(256, activation='relu'),
+    Dense(128, activation='relu'),  # Added another layer for better performance
+    Dense(num_classes)  # No activation here since we're using from_logits=True
+])
+
+model.compile(
+    optimizer='adam',
+    loss=SparseCategoricalCrossentropy(from_logits=True),
+    metrics=['accuracy']
+)
+
+print("Model summary:")
+model.summary()
+
+# Train the model
+print("Training model...")
+history = model.fit(
+    train_flattened, 
+    epochs=70,  # Increased epochs
+    validation_data=test_flattened,
+    verbose=1
+)
+
+# Evaluate the model
+test_loss, test_acc = model.evaluate(test_flattened)
+print(f"Test accuracy: {test_acc:.4f} ({test_acc*100:.2f}%)")
+
+# Create probability model for predictions
+probability_model = Sequential([model, Softmax()])
+
+# Test predictions with text output
+print("\nSample predictions:")
+for images, labels in test_flattened.take(1):
+    predictions = probability_model.predict(images)
+    for i in range(min(5, len(images))):
+        predicted_class = tf.argmax(predictions[i])
+        confidence = tf.reduce_max(predictions[i])
+        print(f"Predicted: {class_names[predicted_class]} ({confidence:.3f}), True: {class_names[labels[i]]}")
+
+# Visualization with CORRECTED reshape
+print("\nVisualizing predictions...")
+for (original_images, labels), (flattened_images, _) in zip(test_original.take(1), test_flattened.take(1)):
+    predictions = probability_model.predict(flattened_images)
+    
+    plt.figure(figsize=(15, 3))
+    for i in range(min(5, len(original_images))):
+        plt.subplot(1, 5, i+1)
+        
+        # Use original images for visualization (correct size: 32x32x3)
+        img_to_show = original_images[i].numpy()
+        plt.imshow(img_to_show)
+        
+        pred_label = class_names[tf.argmax(predictions[i])]
+        true_label = class_names[labels[i]]
+        confidence = tf.reduce_max(predictions[i])
+        
+        color = 'green' if pred_label == true_label else 'red'
+        plt.title(f'Pred: {pred_label}\nTrue: {true_label}\nConf: {confidence:.2f}', 
+                 color=color, fontsize=10)
+        plt.axis('off')
+    
+    plt.tight_layout()
+    plt.show()
