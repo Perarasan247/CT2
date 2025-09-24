@@ -1,0 +1,71 @@
+Bankers Algorithm
+-----------------
+class BankersAlgorithm:
+  def __init__(self, available_resources, max_resources, allocation):
+    self.available_resources = available_resources
+    self.max_resources = max_resources
+    self.allocation = allocation
+    self.num_processes = len(allocation)
+    self.num_resources = len(available_resources)
+
+  def is_safe_state(self):
+    work = self.available_resources.copy()
+    finish = [False] * self.num_processes
+    safe_sequence = []
+    for _ in range(self.num_processes):
+      for i in range(self.num_processes):
+        if not finish[i] and all(work[j] >= self.allocation[i][j] for j in range(self.num_resources)):
+          safe_sequence.append(i)
+          work = [work[j] + self.allocation[i][j] for j in range(self.num_resources)]
+          finish[i] = True
+          break
+
+      if all(finish):
+        print("Safe sequence:", safe_sequence)
+        return True
+    print("The system is in an unsafe state.")
+    return False
+
+allocation_matrix = [[0,1,0],[2,0,0],[3,0,2],[2,1,1],[0,0,2]]
+max_matrix = [[7,5,3],[3,2,2],[9,0,2],[2,2,2],[9,3,3]]
+available_resources = [3,3,2]
+banker = BankersAlgorithm(available_resources, max_matrix, allocation_matrix)
+banker.is_safe_state()
+-----------------------------------------------------------------------------------------------------------
+Ring Algorithm
+--------------
+import random
+import time
+from threading import Thread, Lock
+
+num_processes = 5
+
+class Process:
+    def __init__(self, pid):
+        self.pid = pid
+        self.is_leader = False
+        self.lock = Lock()
+
+    def run(self):
+        time.sleep(random.uniform(0.1, 0.5))
+
+        next_process = (self.pid + 1) % num_processes
+        with processes[next_process].lock:
+            if not processes[next_process].is_leader:
+                print(f"Process {self.pid} sends a message to Process {next_process}")
+
+            if self.pid == max([p.pid for p in processes]):
+                self.is_leader = True
+                print(f"Process {self.pid} becomes the leader")
+
+processes = [Process(pid) for pid in range(num_processes)]
+
+threads = [Thread(target=process.run) for process in processes]
+for thread in threads:
+    thread.start()
+
+for thread in threads:
+    thread.join()
+
+leader = [p for p in processes if p.is_leader][0]
+print(f"Leader elected: Process {leader.pid}")
