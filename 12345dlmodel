@@ -1,0 +1,224 @@
+BackPropagation
+---------------
+import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def sigmoid_derivative(x):
+    return x * (1 - x)
+
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+
+y = np.array([[0],[1],[1],[0]])
+
+np.random.seed(42)
+
+input_size = 2
+hidden_size = 2
+output_size = 1
+
+W1 = np.random.uniform(-1, 1, (input_size, hidden_size))
+b1 = np.zeros((1, hidden_size))
+W2 = np.random.uniform(-1, 1, (hidden_size, output_size))
+b2 = np.zeros((1, output_size))
+
+lr = 0.5
+epochs = 10000
+
+for epoch in range(epochs):
+    z1 = np.dot(X, W1) + b1
+    a1 = sigmoid(z1)
+
+    z2 = np.dot(a1, W2) + b2
+    a2 = sigmoid(z2)
+
+    error = y - a2
+    d_a2 = error * sigmoid_derivative(a2)
+
+    error_hidden = d_a2.dot(W2.T)
+    d_a1 = error_hidden * sigmoid_derivative(a1)
+
+    W2 += a1.T.dot(d_a2) * lr
+    b2 += np.sum(d_a2, axis=0, keepdims=True) * lr
+    W1 += X.T.dot(d_a1) * lr
+    b1 += np.sum(d_a1, axis=0, keepdims=True) * lr
+
+    if epoch % 2000 == 0:
+        loss = np.mean(np.square(error))
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+
+print("\nFinal Predictions:")
+print(a2.round(3))
+--------------------------------------------------------------------
+Simple Perceptron
+------------------
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+iris = load_iris()
+X = iris.data[:100, :2]
+y = iris.target[:100]
+
+y = np.where(y == 0, -1, 1)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+class Perceptron:
+    def __init__(self, learning_rate=0.1, n_epochs=10):
+        self.lr = learning_rate
+        self.n_epochs = n_epochs
+
+    def fit(self, X, y):
+        self.w = np.zeros(X.shape[1])
+        self.b = 0
+
+        for _ in range(self.n_epochs):
+            for xi, target in zip(X, y):
+                update = self.lr * (target - self.predict(xi))
+                self.w += update * xi
+                self.b += update
+
+    def net_input(self, X):
+        return np.dot(X, self.w) + self.b
+
+    def predict(self, X):
+        return np.where(self.net_input(X) >= 0, 1, -1)
+
+ppn = Perceptron(learning_rate=0.1, n_epochs=10)
+ppn.fit(X_train, y_train)
+
+y_pred = ppn.predict(X_test)
+
+accuracy = np.mean(y_pred == y_test)
+print("Test Accuracy:", accuracy)
+------------------------------------------------------------------------------
+Image Classification
+--------------------
+import tensorflow as tf
+from tensorflow.keras import datasets, models, layers
+import numpy as np
+
+(train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
+
+train_images = train_images.reshape((train_images.shape[0], -1)) / 255.0
+test_images = test_images.reshape((test_images.shape[0], -1)) / 255.0
+
+class_names = ['Airplane', 'Car', 'Bird', 'Cat', 'Deer',
+               'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
+
+model = models.Sequential([
+    layers.Dense(512, activation='relu', input_shape=(3072,)),
+    layers.Dense(256, activation='relu'),
+    layers.Dense(10)
+])
+
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+model.fit(train_images, train_labels, epochs=10, batch_size=64,
+          validation_data=(test_images, test_labels))
+
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+print(f"Test accuracy: {test_acc:.2f}")
+
+probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+predictions = probability_model.predict(test_images)
+print(f"Predicted label: {class_names[np.argmax(predictions[0])]} | True label: {class_names[test_labels[0][0]]}")
+
+import matplotlib.pyplot as plt
+
+num_images_to_show = 5
+plt.figure(figsize=(10, 5))
+
+for i in range(num_images_to_show):
+    plt.subplot(1, num_images_to_show, i+1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+
+    plt.imshow(test_images[i].reshape(32, 32, 3))
+    pred_label = class_names[np.argmax(predictions[i])]
+    true_label = class_names[test_labels[i][0]]
+
+    color = 'green' if pred_label == true_label else 'red'
+    plt.title(pred_label, color=color)
+    plt.xlabel(f"True: {true_label}")
+
+plt.tight_layout()
+plt.show()
+--------------------------------------------------------------------------------------
+VGG
+----
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.applications.vgg16 import preprocess_input, decode_predictions
+from tensorflow.keras.preprocessing import image
+import matplotlib.pyplot as plt
+import numpy as np
+
+model = VGG16(weights='imagenet')
+
+img_path = "/content/labrador-retriever.avif"
+img = image.load_img(img_path, target_size=(224, 224))
+
+x = image.img_to_array(img)
+
+x = np.expand_dims(x, axis=0)
+
+x = preprocess_input(x)
+
+preds = model.predict(x)
+plt.imshow(img)
+
+print('Predicted:', decode_predictions(preds, top=3)[0])
+---------------------------------------------------------------------------------------
+MNIST
+-----
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import datasets
+
+(x_train, y_train), (x_test, y_test) = datasets.mnist.load_data()
+
+x_train = x_train.reshape(-1,28,28,1).astype("float32") / 255.0
+x_test = x_test.reshape(-1,28,28,1).astype("float32") / 255.0
+
+from tensorflow.keras import layers, models
+
+model = models.Sequential([
+    layers.Conv2D(32, (3,3), activation="relu", input_shape=(28,28,1)),
+    layers.MaxPooling2D((2,2)),
+
+    layers.Conv2D(64, (3,3), activation="relu"),
+    layers.MaxPooling2D((2,2)),
+
+    layers.Flatten(),
+    layers.Dense(128, activation="relu"),
+    layers.Dense(10, activation="softmax")
+])
+
+model.compile(optimizer="adam",
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"])
+
+model.fit(x_train, y_train, epochs=5, validation_split=0.1)
+
+loss, acc = model.evaluate(x_test, y_test)
+print(f"Test Accuracy: {acc*100:.2f}%")
+
+
+img = x_test[4]
+plt.imshow(img.squeeze(), cmap="gray")
+plt.title("Input Digit")
+plt.show()
+
+pred = model.predict(np.expand_dims(img, axis=0))
+print("Predicted digit:", pred.argmax())
