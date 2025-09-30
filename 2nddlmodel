@@ -1,0 +1,192 @@
+AND, OR, NOT GATE
+-----------------
+import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def and_gate(x1, x2):
+    w1, w2, b = 0.5, 0.5, -0.8
+    z = w1 * x1 + w2 * x2 + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+def not_gate(x):
+    w, b = -1, 0.5
+    z = w * x + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+def or_gate(x1, x2):
+    w1, w2, b = 0.5, 0.5, -0.3
+    z = w1 * x1 + w2 * x2 + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+print("--- AND Gate ---")
+print(f"AND(0, 0) = {and_gate(0, 0)}")
+print(f"AND(0, 1) = {and_gate(0, 1)}")
+print(f"AND(1, 0) = {and_gate(1, 0)}")
+print(f"AND(1, 1) = {and_gate(1, 1)}")
+
+print("-" * 20)
+
+print("--- OR Gate ---")
+print(f"OR(0, 0) = {or_gate(0, 0)}")
+print(f"OR(0, 1) = {or_gate(0, 1)}")
+print(f"OR(1, 0) = {or_gate(1, 0)}")
+print(f"OR(1, 1) = {or_gate(1, 1)}")
+
+print("-" * 20)
+
+print("--- NOT Gate ---")
+print(f"NOT(0) = {not_gate(0)}")
+print(f"NOT(1) = {not_gate(1)}")
+
+print("-" * 20)
+------------------------------------------------------------------------
+Simple Perceptron – AND gate
+----------------------------
+import numpy as np
+
+class Perceptron:
+    def __init__(self, learning_rate=0.01, n_iters=10):
+        self.lr = learning_rate
+        self.n_iters = n_iters
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                linear_output = np.dot(x_i, self.weights) + self.bias
+                y_predicted = self.activation(linear_output)
+
+                update = self.lr * (y[idx] - y_predicted)
+                self.weights += update * x_i
+                self.bias += update
+
+    def activation(self, x):
+        return 1 if x >= 0 else 0 
+
+    def predict(self, X):
+        linear_output = np.dot(X, self.weights) + self.bias
+        y_predicted = np.array([self.activation(x) for x in linear_output])
+        return y_predicted
+
+
+if __name__ == "__main__":
+    X = np.array([[0, 0],
+                  [0, 1],
+                  [1, 0],
+                  [1, 1]])
+    y = np.array([0, 0, 0, 1])  
+
+    p = Perceptron(learning_rate=0.1, n_iters=10)
+    p.fit(X, y)
+    predictions = p.predict(X)
+
+    print("Predictions:", predictions)
+--------------------------------------------------------------------------------
+Learning the line Y = 2X+3 
+--------------------------
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+data_content = """x,y
+1,5
+2,7
+3,9
+4,11
+5,13
+"""
+with open('data.csv', 'w') as f:
+    f.write(data_content)
+print("Created dummy data.csv")
+
+data = pd.read_csv('data.csv')
+X = data['x'].values.reshape(-1, 1)
+Y = data['y'].values
+
+np.random.seed(0)
+W = np.random.randn(1)
+b = np.random.randn(1)
+
+lr = 0.01
+
+epochs = 1000
+loss_history = []
+
+for epoch in range(epochs):
+    Y_pred = X.flatten() * W + b
+    
+    loss = np.mean((Y - Y_pred) ** 2)
+    loss_history.append(loss)
+    
+    dW = -2 * np.mean((Y - Y_pred) * X.flatten())
+    db = -2 * np.mean(Y - Y_pred)
+    
+    W -= lr * dW
+    b -= lr * db
+    
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}, Loss: {loss:.4f}, W: {W[0]:.4f}, b: {b[0]:.4f}")
+
+print(f"\nFinal learned W: {W[0]:.4f}, b: {b[0]:.4f}")
+
+plt.scatter(X, Y, label='Dataset Points', color='blue')
+plt.plot(X, X * W + b, label='Model Prediction', color='red')
+plt.title('FFNN Learning y = 2x + 3 from Dataset')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.figure()
+plt.plot(loss_history)
+plt.title("Loss Over Epochs")
+plt.xlabel("Epoch")
+plt.ylabel("MSE Loss")
+plt.grid(True)
+plt.show()
+---------------------------------------------------------------------------------
+RBF Network for Regression 
+--------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+time = np.array([6, 9, 12, 15, 18, 21]).reshape(-1, 1)
+temperature = np.array([15, 20, 30, 32, 25, 18])
+
+def rbf(x, c, gamma=0.1):
+    return np.exp(-gamma * (x - c) ** 2)
+
+centers = time.flatten()
+gamma = 0.1
+X_rbf = np.zeros((len(time), len(centers)))
+for i, c in enumerate(centers):
+    X_rbf[:, i] = rbf(time.flatten(), c, gamma)
+
+model = LinearRegression()
+model.fit(X_rbf, temperature)
+
+time_test = np.linspace(0, 24, 100).reshape(-1, 1)
+X_rbf_test = np.zeros((len(time_test), len(centers)))
+for i, c in enumerate(centers):
+    X_rbf_test[:, i] = rbf(time_test.flatten(), c, gamma)
+
+temp_pred = model.predict(X_rbf_test)
+
+plt.figure(figsize=(8, 5))
+plt.scatter(time, temperature, color='red', label='Training Data')
+plt.plot(time_test, temp_pred, label='RBF Regression Prediction', color='blue')
+plt.title('Predicting Temperature Over Time Using RBF')
+plt.xlabel('Time of Day (Hours)')
+plt.ylabel('Temperature (°C)')
+plt.legend()
+plt.grid(True)
+plt.show()
