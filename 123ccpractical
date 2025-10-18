@@ -1,0 +1,103 @@
+RPC
+---
+#Server
+from jsonrpclib.SimpleJSONRPCServer import SimpleJSONRPCServer
+
+def findsum(num1, num2):
+    res = num1 + num2
+    return res
+
+def main():
+    server = SimpleJSONRPCServer(('localhost', 1006))
+    server.register_function(findsum)
+    print("Server started on port 1006...")
+    server.serve_forever()
+
+if __name__ == '__main__':
+    main()
+
+#Client
+from jsonrpclib import Server
+
+def main():
+    conn = Server('http://localhost:1006')
+    result = conn.findsum(100, 200)
+    print("Result from server:", result)
+
+if __name__ == '__main__':
+    main()
+-----------------------------------------------------------------------
+MapReduce
+----------
+import threading
+
+data = ["hello world", "hello again", "hello world again"]
+
+mapped = []
+lock = threading.Lock()
+
+def map_function(text):
+    local = []
+    words = text.split()
+    for word in words:
+        local.append((word, 1))
+    with lock:
+        mapped.extend(local)
+
+threads = []
+for line in data:
+    t = threading.Thread(target=map_function, args=(line,))
+    threads.append(t)
+    t.start()
+
+for t in threads:
+    t.join()
+
+print("Mapped Output:", mapped)
+
+shuffle = {}
+for word, count in mapped:
+    if word in shuffle:
+        shuffle[word].append(count)
+    else:
+        shuffle[word] = [count]
+
+reduced = {}
+for word, counts in shuffle.items():
+    reduced[word] = sum(counts)
+
+print("\nFinal Word Count:", reduced)
+-------------------------------------------------------------------
+Bankers Algorithm
+-----------------
+class BankersAlgorithm:
+  def __init__(self, available_resources, max_resources, allocation):
+    self.available_resources = available_resources
+    self.max_resources = max_resources
+    self.allocation = allocation
+    self.num_processes = len(allocation)
+    self.num_resources = len(available_resources)
+
+  def is_safe_state(self):
+    work = self.available_resources.copy()
+    finish = [False] * self.num_processes
+    safe_sequence = []
+    for _ in range(self.num_processes):
+      for i in range(self.num_processes):
+        if not finish[i] and all(work[j] >= self.allocation[i][j] for j in range(self.num_resources)):
+          safe_sequence.append(i)
+          work = [work[j] + self.allocation[i][j] for j in range(self.num_resources)]
+          finish[i] = True
+          break
+
+      if all(finish):
+        print("Safe sequence:", safe_sequence)
+        return True
+    print("The system is in an unsafe state.")
+    return False
+
+allocation_matrix = [[0,1,0],[2,0,0],[3,0,2],[2,1,1],[0,0,2]]
+max_matrix = [[7,5,3],[3,2,2],[9,0,2],[2,2,2],[9,3,3]]
+available_resources = [3,3,2]
+banker = BankersAlgorithm(available_resources, max_matrix, allocation_matrix)
+banker.is_safe_state()
