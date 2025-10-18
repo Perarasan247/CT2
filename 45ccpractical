@@ -1,0 +1,33 @@
+BULLY ALGORITHM
+---------------
+class Bully:
+    def __init__(self):
+        self.st = []
+        self.prio = []
+        self.co = 0
+        self.n = int(input("Enter number of processes: "))
+
+    def getval(self):
+        for i in range(self.n):
+            print(f"Enter Status of process {i+1} (1=Up, 0=Down):")
+            self.st.append(int(input()))
+            print("Enter Priority of the process:")
+            self.prio.append(int(input()))
+
+    def elect(self, ele):
+        ele = ele - 1
+        self.co = ele + 1
+        for i in range(self.n):
+            if self.prio[ele] < self.prio[i]:
+                print(f"Election message is sent from {ele+1} to {i+1}")
+                if self.st[i] == 1:
+                    self.elect(i+1)
+        return self.co
+
+    def startelect(self):
+        ele = int(input("Which process will initiate election? "))
+        print("Final coordinator is:", self.elect(ele))
+
+obj = Bully()
+obj.getval()
+obj.startelect()
