@@ -1,0 +1,205 @@
+VGG
+---
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.applications.vgg16 import preprocess_input, decode_predictions
+from tensorflow.keras.preprocessing import image
+import matplotlib.pyplot as plt
+import numpy as np
+
+model = VGG16(weights='imagenet')
+
+img_path = "/content/labrador-retriever.avif"
+img = image.load_img(img_path, target_size=(224, 224))
+
+x = image.img_to_array(img)
+
+x = np.expand_dims(x, axis=0)
+
+x = preprocess_input(x)
+
+preds = model.predict(x)
+plt.imshow(img)
+
+print('Predicted:', decode_predictions(preds, top=3)[0])
+-----------------------------------------------------------------------------------------
+CIFAR-10 | Image Classification with existing dataset
+--------------------------------------------------------
+import tensorflow as tf
+from tensorflow.keras import datasets, models, layers
+import numpy as np
+
+(train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
+
+train_images = train_images.reshape((train_images.shape[0], -1)) / 255.0
+test_images = test_images.reshape((test_images.shape[0], -1)) / 255.0
+
+class_names = ['Airplane', 'Car', 'Bird', 'Cat', 'Deer',
+               'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
+
+model = models.Sequential([
+    layers.Dense(512, activation='relu', input_shape=(3072,)),
+    layers.Dense(256, activation='relu'),
+    layers.Dense(10)
+])
+
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+model.fit(train_images, train_labels, epochs=10, batch_size=64,
+          validation_data=(test_images, test_labels))
+
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+print(f"Test accuracy: {test_acc:.2f}")
+
+probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+predictions = probability_model.predict(test_images)
+print(f"Predicted label: {class_names[np.argmax(predictions[0])]} | True label: {class_names[test_labels[0][0]]}")
+
+import matplotlib.pyplot as plt
+
+num_images_to_show = 5
+plt.figure(figsize=(10, 5))
+
+for i in range(num_images_to_show):
+    plt.subplot(1, num_images_to_show, i+1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+
+    plt.imshow(test_images[i].reshape(32, 32, 3))
+    pred_label = class_names[np.argmax(predictions[i])]
+    true_label = class_names[test_labels[i][0]]
+
+    color = 'green' if pred_label == true_label else 'red'
+    plt.title(pred_label, color=color)
+    plt.xlabel(f"True: {true_label}")
+
+plt.tight_layout()
+plt.show()
+--------------------------------------------------------------------------------------------------------------------
+Custom Image Folder Classification with a Flattened Dense Network
+----------------------------------------------------------------
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
+import matplotlib.pyplot as plt
+import kagglehub
+
+path = kagglehub.dataset_download("samuelcortinhas/cats-and-dogs-image-classification")
+print("Path to dataset files:", path)
+
+img_height, img_width = 128, 128
+batch_size = 32
+
+train_dataset = image_dataset_from_directory(
+    f'{path}/train',
+    image_size=(img_height, img_width),
+    batch_size=batch_size,
+    label_mode='int'
+)
+
+test_dataset = image_dataset_from_directory(
+    f'{path}/test',
+    image_size=(img_height, img_width),
+    batch_size=batch_size,
+    label_mode='int'
+)
+
+def normalize(images, labels):
+    return tf.cast(images, tf.float32) / 255.0, labels
+
+train_dataset = train_dataset.map(normalize)
+test_dataset = test_dataset.map(normalize)
+
+train_dataset = train_dataset.cache().shuffle(1000).prefetch(buffer_size=tf.data.AUTOTUNE)
+test_dataset = test_dataset.cache().prefetch(buffer_size=tf.data.AUTOTUNE)
+
+class_names = ["cat", "dog"]
+num_classes = len(class_names)
+
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(img_height, img_width, 3)),
+    MaxPooling2D(2,2),
+
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Conv2D(128, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(num_classes)
+])
+
+model.compile(
+    optimizer='adam',
+    loss=SparseCategoricalCrossentropy(from_logits=True),
+    metrics=['accuracy']
+)
+
+history = model.fit(
+    train_dataset,
+    epochs=10,
+    validation_data=test_dataset
+)
+
+test_loss, test_acc = model.evaluate(test_dataset)
+print(f"Test accuracy: {test_acc:.2f}")
+
+probability_model = Sequential([model, tf.keras.layers.Softmax()])
+
+for images, labels in test_dataset.take(1):
+    predictions = probability_model.predict(images)
+    plt.figure(figsize=(12, 3))
+    for i in range(5):
+        plt.subplot(1, 5, i+1)
+        plt.imshow(images[i].numpy())
+        pred_label = class_names[tf.argmax(predictions[i])]
+        true_label = class_names[labels[i]]
+        color = 'green' if pred_label == true_label else 'red'
+        plt.title(pred_label, color=color)
+        plt.axis('off')
+    plt.show()
+----------------------------------------------------------------------------------
+RBF Network for Regression
+----------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+time = np.array([6, 9, 12, 15, 18, 21]).reshape(-1, 1)
+temperature = np.array([15, 20, 30, 32, 25, 18])
+
+def rbf(x, c, gamma=0.1):
+    return np.exp(-gamma * (x - c) ** 2)
+
+centers = time.flatten()
+gamma = 0.1
+X_rbf = np.zeros((len(time), len(centers)))
+for i, c in enumerate(centers):
+    X_rbf[:, i] = rbf(time.flatten(), c, gamma)
+
+model = LinearRegression()
+model.fit(X_rbf, temperature)
+
+time_test = np.linspace(0, 24, 100).reshape(-1, 1)
+X_rbf_test = np.zeros((len(time_test), len(centers)))
+for i, c in enumerate(centers):
+    X_rbf_test[:, i] = rbf(time_test.flatten(), c, gamma)
+
+temp_pred = model.predict(X_rbf_test)
+
+plt.figure(figsize=(8, 5))
+plt.scatter(time, temperature, color='red', label='Training Data')
+plt.plot(time_test, temp_pred, label='RBF Regression Prediction', color='blue')
+plt.title('Predicting Temperature Over Time Using RBF')
+plt.xlabel('Time of Day (Hours)')
+plt.ylabel('Temperature (°C)')
+plt.legend()
+plt.grid(True)
+plt.show()
