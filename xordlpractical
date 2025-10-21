@@ -1,0 +1,229 @@
+AND, OR, NOT Gate
+-----------------
+import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def and_gate(x1, x2):
+    w1, w2, b = 0.5, 0.5, -0.8
+    z = w1 * x1 + w2 * x2 + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+def not_gate(x):
+    w, b = -1, 0.5
+    z = w * x + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+def or_gate(x1, x2):
+    w1, w2, b = 0.5, 0.5, -0.3
+    z = w1 * x1 + w2 * x2 + b
+    return 1 if sigmoid(z) > 0.5 else 0
+
+print("--- AND Gate ---")
+print(f"AND(0, 0) = {and_gate(0, 0)}")
+print(f"AND(0, 1) = {and_gate(0, 1)}")
+print(f"AND(1, 0) = {and_gate(1, 0)}")
+print(f"AND(1, 1) = {and_gate(1, 1)}")
+
+print("-" * 20)
+
+print("--- OR Gate ---")
+print(f"OR(0, 0) = {or_gate(0, 0)}")
+print(f"OR(0, 1) = {or_gate(0, 1)}")
+print(f"OR(1, 0) = {or_gate(1, 0)}")
+print(f"OR(1, 1) = {or_gate(1, 1)}")
+
+print("-" * 20)
+
+print("--- NOT Gate ---")
+print(f"NOT(0) = {not_gate(0)}")
+print(f"NOT(1) = {not_gate(1)}")
+
+print("-" * 20)
+----------------------------------------------------------------------
+Back Propagation
+----------------
+import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def sigmoid_derivative(x):
+    return x * (1 - x)
+
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+
+y = np.array([[0],[1],[1],[0]])
+
+np.random.seed(42)
+
+input_size = 2
+hidden_size = 2
+output_size = 1
+
+W1 = np.random.uniform(-1, 1, (input_size, hidden_size))
+b1 = np.zeros((1, hidden_size))
+W2 = np.random.uniform(-1, 1, (hidden_size, output_size))
+b2 = np.zeros((1, output_size))
+
+lr = 0.5
+epochs = 10000
+
+for epoch in range(epochs):
+    z1 = np.dot(X, W1) + b1
+    a1 = sigmoid(z1)
+
+    z2 = np.dot(a1, W2) + b2
+    a2 = sigmoid(z2)
+
+    error = y - a2
+    d_a2 = error * sigmoid_derivative(a2)
+
+    error_hidden = d_a2.dot(W2.T)
+    d_a1 = error_hidden * sigmoid_derivative(a1)
+
+    W2 += a1.T.dot(d_a2) * lr
+    b2 += np.sum(d_a2, axis=0, keepdims=True) * lr
+    W1 += X.T.dot(d_a1) * lr
+    b1 += np.sum(d_a1, axis=0, keepdims=True) * lr
+
+    if epoch % 2000 == 0:
+        loss = np.mean(np.square(error))
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+
+print("\nFinal Predictions:")
+print(a2.round(3))
+-------------------------------------------------------------------
+Simple Perceptron – AND Logic gate
+----------------------------------
+import numpy as np
+
+class Perceptron:
+    def __init__(self, learning_rate=0.01, n_iters=10):
+        self.lr = learning_rate
+        self.n_iters = n_iters
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                linear_output = np.dot(x_i, self.weights) + self.bias
+                y_predicted = self.activation(linear_output)
+
+                update = self.lr * (y[idx] - y_predicted)
+                self.weights += update * x_i
+                self.bias += update
+
+    def activation(self, x):
+        return 1 if x >= 0 else 0
+
+    def predict(self, X):
+        linear_output = np.dot(X, self.weights) + self.bias
+        y_predicted = np.array([self.activation(x) for x in linear_output])
+        return y_predicted
+
+
+if __name__ == "__main__":
+    X = np.array([[0, 0],
+                  [0, 1],
+                  [1, 0],
+                  [1, 1]])
+    y = np.array([0, 0, 0, 1])
+
+    p = Perceptron(learning_rate=0.1, n_iters=10)
+    p.fit(X, y)
+    predictions = p.predict(X)
+
+    print("Predictions:", predictions)
+----------------------------------------------------------------------------------------
+Simple Perceptron Model for Binary Classification on Iris Dataset
+-----------------------------------------------------------------
+import numpy as np
+from sklearn.datasets import load_iris
+
+class Perceptron:
+    def __init__(self, learning_rate=0.01, n_iters=10):
+        self.lr = learning_rate
+        self.n_iters = n_iters
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                linear_output = np.dot(x_i, self.weights) + self.bias
+                y_predicted = self.activation(linear_output)
+                update = self.lr * (y[idx] - y_predicted)
+                self.weights += update * x_i
+                self.bias += update
+
+    def activation(self, x):
+        return 1 if x >= 0 else 0
+
+    def predict(self, X):
+        if X.ndim == 1:
+            linear_output = [np.dot(X, self.weights) + self.bias]
+        else:
+            linear_output = np.dot(X, self.weights) + self.bias
+        y_predicted = np.array([self.activation(val) for val in linear_output])
+        return y_predicted
+
+
+if __name__ == "__main__":
+    iris = load_iris()
+    X = iris.data
+    y = iris.target
+
+    y = np.where(y == 0, 0, 1)
+
+    p = Perceptron(learning_rate=0.1, n_iters=10)
+    p.fit(X, y)
+    predictions = p.predict(X)
+    print("Predictions:", predictions)
+-------------------------------------------------------------------------------------
+Sentiment Analysis on IMDB Movie Reviews Using Deep Learning
+----------------------------------------------------
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
+num_words = 10000
+maxlen = 200
+
+(X_train, y_train), (X_test, y_test) = keras.datasets.imdb.load_data(num_words=num_words)
+
+X_train = keras.preprocessing.sequence.pad_sequences(X_train, maxlen=maxlen)
+X_test = keras.preprocessing.sequence.pad_sequences(X_test, maxlen=maxlen)
+
+model = keras.Sequential([
+    layers.Embedding(input_dim=num_words, output_dim=32, input_length=maxlen),
+    layers.LSTM(64),
+    layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(
+    optimizer='adam',
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+
+history = model.fit(
+    X_train, y_train,
+    epochs=3,
+    batch_size=128,
+    validation_split=0.2,
+    verbose=1
+)
+
+loss, acc = model.evaluate(X_test, y_test, verbose=2)
+print(f"\nTest Accuracy: {acc:.4f}")
