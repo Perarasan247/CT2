@@ -66,6 +66,31 @@ for thread in threads:
 
 for thread in threads:
     thread.join()
+--------------------------------------------------------------------------------------------------
+REST
+-----
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+books = [
+    {"id": 1, "title": "Book 1", "author": "Author 1"},
+    {"id": 2, "title": "Book 2", "author": "Author 2"},
+]
+
+@app.route('/', methods=['GET'])
+def get_books():
+    return jsonify({"books": books})
+
+@app.route('/books/<int:book_id>', methods=['GET'])
+def get_book(book_id):
+    book = next((book for book in books if book['id'] == book_id), None)
+    if book is None:
+        return jsonify({"error": "Book not found"}), 404
+    return jsonify({"book": book})
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 leader = [p for p in processes if p.is_leader][0]
 print(f"Leader elected: Process {leader.pid}")
