@@ -101,3 +101,71 @@ max_matrix = [[7,5,3],[3,2,2],[9,0,2],[2,2,2],[9,3,3]]
 available_resources = [3,3,2]
 banker = BankersAlgorithm(available_resources, max_matrix, allocation_matrix)
 banker.is_safe_state()
+------------------------------------------------------------------------------------------------------
+Bankers Algorithm Manually:
+class BankersAlgorithm:
+    def __init__(self, available_resources, max_resources, allocation):
+        self.available_resources = available_resources
+        self.max_resources = max_resources
+        self.allocation = allocation
+        self.num_processes = len(allocation)
+        self.num_resources = len(available_resources)
+        # Calculate Need = Max - Allocation
+        self.need = [[self.max_resources[i][j] - self.allocation[i][j]
+                      for j in range(self.num_resources)]
+                     for i in range(self.num_processes)]
+
+    def is_safe_state(self):
+        work = self.available_resources.copy()
+        finish = [False] * self.num_processes
+        safe_sequence = []
+
+        print("\nNeed Matrix:")
+        for i in range(self.num_processes):
+            print(f"P{i}: {self.need[i]}")
+        print("\nInitial Available:", work)
+
+        for _ in range(self.num_processes):
+            allocated = False
+            for i in range(self.num_processes):
+                if not finish[i] and all(self.need[i][j] <= work[j] for j in range(self.num_resources)):
+                    print(f"\nProcess P{i} can finish (Need ≤ Available).")
+                    work = [work[j] + self.allocation[i][j] for j in range(self.num_resources)]
+                    print(f"After P{i} finishes, Available becomes {work}")
+                    finish[i] = True
+                    safe_sequence.append(f"P{i}")
+                    allocated = True
+                    break
+
+            if not allocated:
+                print("\nNo further process can proceed. System is in an UNSAFE state.")
+                return False
+
+        print("\n✅ System is in a SAFE state.")
+        print("✅ Safe Sequence:", " → ".join(safe_sequence))
+        return True
+
+
+# ---- INPUT DATA ----
+allocation_matrix = [
+    [0, 1, 0],
+    [2, 0, 0],
+    [3, 0, 2],
+    [2, 1, 1],
+    [0, 0, 2]
+]
+
+max_matrix = [
+    [7, 5, 3],
+    [3, 2, 2],
+    [9, 0, 2],
+    [2, 2, 2],
+    [9, 3, 3]
+]
+
+available_resources = [3, 3, 2]
+
+# ---- RUN ----
+banker = BankersAlgorithm(available_resources, max_matrix, allocation_matrix)
+banker.is_safe_state()
+
